@@ -7,7 +7,7 @@ import {
   Heart, KeyRound, LayoutDashboard, LockKeyhole, Menu, MoreHorizontal, Moon, Plus, RefreshCw, Search,
   Server, Settings, ShieldCheck, Sparkles, Sun, Terminal, WandSparkles, X, Zap
 } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 type Page = "Dashboard" | "Projects" | "Hosting" | "Storage" | "Databases" | "Functions" | "Containers" | "Domains" | "DNS" | "SSL" | "Analytics" | "Marketplace" | "AI Builder" | "Team" | "Logs" | "Notifications" | "Billing" | "Security" | "Settings";
 const nav = [
@@ -21,6 +21,7 @@ const projects = [
   { name: "luma-api", stack: "Node.js", accent: "blue", status: "Live", visits: "8.7k", cpu: 68, icon: "◈" },
   { name: "atlas-studio", stack: "Astro", accent: "mint", status: "Building", visits: "2.1k", cpu: 19, icon: "◒" },
 ];
+type ProjectData = (typeof projects)[number];
 
 function Brand() { return <div className="brand"><span className="panda-mark"><i /><i /><i /></span><span>Panda<span>Cloud</span></span></div>; }
 function TinyChart() { return <svg className="chart" viewBox="0 0 420 100" preserveAspectRatio="none"><defs><linearGradient id="fill" x1="0" x2="0" y1="0" y2="1"><stop stopColor="currentColor" stopOpacity=".28"/><stop offset="1" stopColor="currentColor" stopOpacity="0"/></linearGradient></defs><path d="M0 85 C21 80 25 57 50 64 S76 48 95 60 S123 65 141 43 S170 52 191 31 S219 47 241 34 S271 55 288 25 S315 26 332 38 S353 31 372 16 S401 21 420 3 L420 100 L0 100Z" fill="url(#fill)"/><path d="M0 85 C21 80 25 57 50 64 S76 48 95 60 S123 65 141 43 S170 52 191 31 S219 47 241 34 S271 55 288 25 S315 26 332 38 S353 31 372 16 S401 21 420 3" fill="none" stroke="currentColor" strokeWidth="2.4"/></svg>; }
@@ -31,9 +32,27 @@ export default function Home() {
   const [create, setCreate] = useState(false), [assistantOpen, setAssistantOpen] = useState(false), [notice, setNotice] = useState(false), [command, setCommand] = useState(false), [toast, setToast] = useState("");
   const [message, setMessage] = useState("");
   const [release, setRelease] = useState<{ environment: "development" | "production"; audience: "internal" | "customer" } | null>(null);
+  const [workspaceProjects, setWorkspaceProjects] = useState<ProjectData[]>(projects);
+  const [projectState, setProjectState] = useState<"loading" | "ready" | "error">("loading");
+  const loadProjects = useCallback(async () => {
+    setProjectState("loading");
+    try {
+      const response = await fetch("/api/projects");
+      if (!response.ok) throw new Error("Project API request failed");
+      const payload = await response.json() as { projects: Array<{ name: string; framework: string; status: string; visits: number; cpu: number }> };
+      setWorkspaceProjects(payload.projects.map((project, index) => {
+        const visual = projects[index % projects.length];
+        return { ...visual, name: project.name, stack: project.framework, status: project.status === "live" ? "Live" : "Building", visits: project.visits >= 1000 ? `${(project.visits / 1000).toFixed(1)}k` : String(project.visits), cpu: project.cpu };
+      }));
+      setProjectState("ready");
+    } catch {
+      setProjectState("error");
+    }
+  }, []);
   useEffect(() => {
     fetch("/api/release").then((response) => response.ok ? response.json() : null).then(setRelease).catch(() => setRelease(null));
   }, []);
+  useEffect(() => { void loadProjects(); }, [loadProjects]);
   const active = (name: string) => setPage(name as Page);
   const sendAI = (event: FormEvent) => { event.preventDefault(); if (!message.trim()) return; setToast("Panda AI is preparing a deployment plan"); setMessage(""); };
   return <main className={dark ? "app dark" : "app"}>
@@ -48,7 +67,7 @@ export default function Home() {
       <header className="topbar"><button className="icon-btn mobile-menu" onClick={() => setCollapsed(!collapsed)}><Menu size={19}/></button><button className="search" onClick={() => setCommand(true)}><Search size={17}/><span>Search everything...</span><kbd>⌘ K</kbd></button><div className="top-actions">{release && <span className={release.environment === "production" ? "release-badge customer" : "release-badge internal"}><i/>{release.environment === "production" ? "Customer release" : "Internal preview"}</span>}<button className="new-button" onClick={() => setCreate(true)}><Plus size={17}/> <span>New</span></button><button className="icon-btn" onClick={() => setNotice(!notice)}><Bell size={18}/><i className="notification-dot"/></button><button className="icon-btn ai-btn" onClick={() => setAssistantOpen(true)}><Sparkles size={17}/></button><button className="icon-btn theme" onClick={() => setDark(!dark)}>{dark ? <Sun size={17}/> : <Moon size={17}/>}</button><button className="avatar">YA</button></div>
         <AnimatePresence>{notice && <motion.div className="notice-pop glass" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}><strong>Notifications</strong><p><i className="green-dot"/>paperplane-web deployed successfully</p><p><i className="purple-dot"/>New AI insight is ready</p><button onClick={() => setNotice(false)}>Mark all as read</button></motion.div>}</AnimatePresence>
       </header>
-      <div className="content">{page === "Dashboard" ? <Dashboard onCreate={() => setCreate(true)} onAI={() => setAssistantOpen(true)} /> : page === "Projects" ? <Projects onCreate={() => setCreate(true)} toast={setToast}/> : <Workspace page={page} onCreate={() => setCreate(true)} toast={setToast}/>}</div>
+      <div className="content">{page === "Dashboard" ? <Dashboard onCreate={() => setCreate(true)} onAI={() => setAssistantOpen(true)} /> : page === "Projects" ? <Projects onCreate={() => setCreate(true)} toast={setToast} projects={workspaceProjects} state={projectState} retry={loadProjects}/> : <Workspace page={page} onCreate={() => setCreate(true)} toast={setToast}/>}</div>
     </section>
     <button className="floating-ai" onClick={() => setAssistantOpen(true)}><span><Sparkles size={19}/></span><b>Ask Panda AI</b></button>
     <AnimatePresence>{create && <CreateProject close={() => setCreate(false)} toast={setToast}/>} {assistantOpen && <AIAssistant close={() => setAssistantOpen(false)} message={message} setMessage={setMessage} send={sendAI}/>} {command && <CommandBox close={() => setCommand(false)} navigate={(p) => { setPage(p); setCommand(false); }}/>} {toast && <motion.div className="toast" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{toast}<button onClick={() => setToast("")}><X size={14}/></button></motion.div>}</AnimatePresence>
@@ -64,7 +83,10 @@ function Dashboard({ onCreate, onAI }: { onCreate: () => void; onAI: () => void 
   <div className="small-column"><article className="ai-card"><div className="ai-gleam"/><div className="ai-avatar"><Bot size={21}/></div><p className="eyebrow">PANDA AI</p><h2>Your cloud co-pilot</h2><p>I noticed traffic to <b>paperplane-web</b> is up 42%. Want me to prepare autoscaling?</p><button onClick={onAI}>Ask Panda AI <ArrowUpRight size={16}/></button></article><article className="panel glass logs"><div className="panel-title"><div><h2>Live activity</h2><p>Just now</p></div><span className="pulse"/></div><p><i className="green-dot"/>Deployment completed <time>2m</time></p><p><i className="purple-dot"/>Build cache restored <time>8m</time></p><p><i className="blue-dot"/>Domain verified <time>1h</time></p></article></div></section>
 </>; }
 
-function Projects({ onCreate, toast }: { onCreate: () => void; toast: (s:string) => void }) { return <><div className="welcome projects-title"><div><p className="eyebrow">YOUR WORKSPACE</p><h1>Projects <span className="count">3</span></h1><p className="muted">Deploy, observe, and scale your ideas.</p></div><button className="primary" onClick={onCreate}><Plus size={17}/> New project</button></div><div className="project-toolbar"><button className="filter">All projects <ChevronDown size={15}/></button><div className="project-search"><Search size={16}/><input placeholder="Filter projects"/></div></div><div className="project-grid">{projects.map(p => <motion.article className="project-card glass" key={p.name} whileHover={{ y:-5 }}><div className="project-card-head"><span className={`project-icon big ${p.accent}`}>{p.icon}</span><button className="row-menu"><MoreHorizontal size={18}/></button></div><div className="project-name"><strong>{p.name}</strong><span className={p.status === "Live" ? "status live" : "status building"}><i/>{p.status}</span></div><p>{p.stack} · Frankfurt, Germany</p><div className="project-metrics"><span><Activity size={14}/>{p.visits} visits</span><span><Gauge size={14}/>{p.cpu}% CPU</span></div><div className="project-line"><b/></div><div className="project-actions"><button onClick={() => toast("Deployment queued for " + p.name)}><Zap size={15}/> Deploy</button><button onClick={() => toast("Opening " + p.name)}><ArrowUpRight size={15}/> Open</button></div></motion.article>)}</div></>; }
+function Projects({ onCreate, toast, projects, state, retry }: { onCreate: () => void; toast: (s:string) => void; projects: ProjectData[]; state: "loading" | "ready" | "error"; retry: () => void }) { const [query, setQuery] = useState(""); const shownProjects = projects.filter((project) => `${project.name} ${project.stack}`.toLowerCase().includes(query.toLowerCase())); return <><div className="welcome projects-title"><div><p className="eyebrow">YOUR WORKSPACE</p><h1>Projects <span className="count">{state === "ready" ? projects.length : "…"}</span></h1><p className="muted">Deploy, observe, and scale your ideas.</p></div><button className="primary" onClick={onCreate}><Plus size={17}/> New project</button></div><div className="project-toolbar"><button className="filter">All projects <ChevronDown size={15}/></button><div className="project-search"><Search size={16}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter projects"/></div></div>{state === "loading" ? <ProjectSkeleton/> : state === "error" ? <ProjectError retry={retry}/> : shownProjects.length === 0 ? <ProjectEmpty query={query} onCreate={onCreate}/> : <div className="project-grid">{shownProjects.map(p => <motion.article className="project-card glass" key={p.name} whileHover={{ y:-5 }}><div className="project-card-head"><span className={`project-icon big ${p.accent}`}>{p.icon}</span><button className="row-menu"><MoreHorizontal size={18}/></button></div><div className="project-name"><strong>{p.name}</strong><span className={p.status === "Live" ? "status live" : "status building"}><i/>{p.status}</span></div><p>{p.stack} · Frankfurt, Germany</p><div className="project-metrics"><span><Activity size={14}/>{p.visits} visits</span><span><Gauge size={14}/>{p.cpu}% CPU</span></div><div className="project-line"><b/></div><div className="project-actions"><button onClick={() => toast("Deployment queued for " + p.name)}><Zap size={15}/> Deploy</button><button onClick={() => toast("Opening " + p.name)}><ArrowUpRight size={15}/> Open</button></div></motion.article>)}</div>}</>; }
+function ProjectSkeleton() { return <div className="project-grid">{Array.from({ length: 3 }).map((_, index) => <div className="project-skeleton glass" key={index}><i/><b/><b/><span/><span/></div>)}</div>; }
+function ProjectError({ retry }: { retry: () => void }) { return <div className="project-state glass"><span className="state-icon error"><Activity size={21}/></span><h2>We couldn&apos;t reach your projects.</h2><p>Your projects are safe. Check the connection, then try again.</p><button className="primary" onClick={retry}><RefreshCw size={16}/> Try again</button></div>; }
+function ProjectEmpty({ query, onCreate }: { query: string; onCreate: () => void }) { return <div className="project-state glass"><span className="state-icon"><Boxes size={21}/></span><h2>No projects found.</h2><p>{query ? `Nothing matches “${query}”. Try another search.` : "Create your first project to see it here."}</p><button className="primary" onClick={onCreate}><Plus size={16}/> Create project</button></div>; }
 
 function Workspace({ page, onCreate, toast }: { page: Page; onCreate: () => void; toast: (s:string) => void }) {
   if (page === "Storage") return <StorageView onCreate={onCreate} toast={toast}/>;
