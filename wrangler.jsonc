@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "pandacloud-console",
+  "name": "young-queen-08f8",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-07-16",
   "assets": {
