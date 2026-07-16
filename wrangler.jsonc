@@ -3,9 +3,38 @@
   "name": "young-queen-08f8",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-07-16",
+  "vars": {
+    "APP_ENV": "production",
+    "AUDIENCE": "customer"
+  },
   "assets": {
     "directory": "./out",
     "binding": "ASSETS",
     "run_worker_first": ["/api/*"]
+  },
+  "env": {
+    "production": {
+      "name": "young-queen-08f8",
+      "vars": {
+        "APP_ENV": "production",
+        "AUDIENCE": "customer"
+      },
+      "assets": {
+        "directory": "./out",
+        "binding": "ASSETS",
+        "run_worker_first": ["/api/*"]
+      }
+    },
+    "development": {
+      "vars": {
+        "APP_ENV": "development",
+        "AUDIENCE": "internal"
+      },
+      "assets": {
+        "directory": "./out",
+        "binding": "ASSETS",
+        "run_worker_first": ["/api/*"]
+      }
+    }
   }
 }

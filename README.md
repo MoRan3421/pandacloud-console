@@ -9,13 +9,22 @@ npm install
 npm run dev
 ```
 
-For a local production-like Worker that serves the static frontend and API together:
+For local development, which uses the isolated internal Worker environment:
 
 ```bash
 npm run worker:dev
 ```
 
-The Worker will expose `GET /api/health`, `GET|POST /api/projects`, `GET /api/deployments`, and `POST /api/ai/blueprint`.
+The Worker exposes `GET /api/health`, `GET /api/release`, `GET|POST /api/projects`, `GET /api/deployments`, and `POST /api/ai/blueprint`.
+
+## Release environments
+
+| Environment | Audience | Worker | Command |
+| --- | --- | --- | --- |
+| Production | Customers | `young-queen-08f8` | `npm run worker:deploy` |
+| Development | Internal team | `young-queen-08f8-development` | `npm run worker:deploy:development` |
+
+Production is the customer-facing release. Development is a separate Worker and asset collection, so development testing cannot overwrite the customer site. Check the current lane with `GET /api/release`.
 
 ## Deploy
 
@@ -23,4 +32,4 @@ The Worker will expose `GET /api/health`, `GET|POST /api/projects`, `GET /api/de
 npm run worker:deploy
 ```
 
-The deploy script builds the static `out/` directory, then uploads it together with `worker/index.ts`. Authenticate with Cloudflare through Wrangler before the first deployment.
+For an internal development release, use `npm run worker:deploy:development`. Both deploy scripts build the static `out/` directory, then upload it together with `worker/index.ts`. Authenticate with Cloudflare through Wrangler before the first deployment.

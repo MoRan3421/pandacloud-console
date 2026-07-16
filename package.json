@@ -7,8 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "worker:dev": "npm run build && wrangler dev",
-    "worker:deploy": "npm run build && wrangler deploy"
+    "worker:dev": "npm run build && wrangler dev --env development",
+    "worker:deploy": "npm run build && wrangler deploy --env production",
+    "worker:check:production": "npm run build && wrangler deploy --env production --dry-run",
+    "worker:deploy:development": "npm run build && wrangler deploy --env development",
+    "worker:check:development": "npm run build && wrangler deploy --env development --dry-run"
   },
   "dependencies": {
     "@types/node": "22.10.1",

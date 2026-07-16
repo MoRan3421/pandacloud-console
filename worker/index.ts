@@ -1,5 +1,7 @@
 interface Env {
   ASSETS: Fetcher;
+  APP_ENV: "development" | "production";
+  AUDIENCE: "internal" | "customer";
 }
 
 const projects = [
@@ -33,8 +35,10 @@ export default {
     }
 
     if (url.pathname === "/api/health") {
-      return json({ status: "healthy", service: "pandacloud-edge", timestamp: new Date().toISOString() }, 200, request);
+      return json({ status: "healthy", service: "pandacloud-edge", environment: env.APP_ENV, audience: env.AUDIENCE, timestamp: new Date().toISOString() }, 200, request);
     }
+
+    if (url.pathname === "/api/release") return json({ environment: env.APP_ENV, audience: env.AUDIENCE, customerSafe: env.APP_ENV === "production" }, 200, request);
 
     if (url.pathname === "/api/projects" && request.method === "GET") {
       return json({ projects, total: projects.length }, 200, request);
