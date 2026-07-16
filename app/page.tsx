@@ -7,7 +7,7 @@ import {
   Heart, KeyRound, LayoutDashboard, LockKeyhole, Menu, MoreHorizontal, Moon, Plus, RefreshCw, Search,
   Server, Settings, ShieldCheck, Sparkles, Sun, Terminal, WandSparkles, X, Zap
 } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 type Page = "Dashboard" | "Projects" | "Hosting" | "Storage" | "Databases" | "Functions" | "Containers" | "Domains" | "DNS" | "SSL" | "Analytics" | "Marketplace" | "AI Builder" | "Team" | "Logs" | "Notifications" | "Billing" | "Security" | "Settings";
 const nav = [
@@ -30,6 +30,10 @@ export default function Home() {
   const [page, setPage] = useState<Page>("Dashboard"), [dark, setDark] = useState(true), [collapsed, setCollapsed] = useState(false);
   const [create, setCreate] = useState(false), [assistantOpen, setAssistantOpen] = useState(false), [notice, setNotice] = useState(false), [command, setCommand] = useState(false), [toast, setToast] = useState("");
   const [message, setMessage] = useState("");
+  const [release, setRelease] = useState<{ environment: "development" | "production"; audience: "internal" | "customer" } | null>(null);
+  useEffect(() => {
+    fetch("/api/release").then((response) => response.ok ? response.json() : null).then(setRelease).catch(() => setRelease(null));
+  }, []);
   const active = (name: string) => setPage(name as Page);
   const sendAI = (event: FormEvent) => { event.preventDefault(); if (!message.trim()) return; setToast("Panda AI is preparing a deployment plan"); setMessage(""); };
   return <main className={dark ? "app dark" : "app"}>
@@ -41,7 +45,7 @@ export default function Home() {
       <div className="side-bottom"><button className="nav-item" onClick={() => setToast("Help Center opened")}><CircleHelp size={18}/><span>Help Center</span></button><button className={page === "Settings" ? "nav-item active" : "nav-item"} onClick={() => active("Settings")}><Settings size={18}/><span>Settings</span></button><div className="usage"><span>Team usage</span><strong>3.8 <em>/ 10 GB</em></strong><i><b/></i></div></div>
     </aside>
     <section className="shell">
-      <header className="topbar"><button className="icon-btn mobile-menu" onClick={() => setCollapsed(!collapsed)}><Menu size={19}/></button><button className="search" onClick={() => setCommand(true)}><Search size={17}/><span>Search everything...</span><kbd>⌘ K</kbd></button><div className="top-actions"><button className="new-button" onClick={() => setCreate(true)}><Plus size={17}/> <span>New</span></button><button className="icon-btn" onClick={() => setNotice(!notice)}><Bell size={18}/><i className="notification-dot"/></button><button className="icon-btn ai-btn" onClick={() => setAssistantOpen(true)}><Sparkles size={17}/></button><button className="icon-btn theme" onClick={() => setDark(!dark)}>{dark ? <Sun size={17}/> : <Moon size={17}/>}</button><button className="avatar">YA</button></div>
+      <header className="topbar"><button className="icon-btn mobile-menu" onClick={() => setCollapsed(!collapsed)}><Menu size={19}/></button><button className="search" onClick={() => setCommand(true)}><Search size={17}/><span>Search everything...</span><kbd>⌘ K</kbd></button><div className="top-actions">{release && <span className={release.environment === "production" ? "release-badge customer" : "release-badge internal"}><i/>{release.environment === "production" ? "Customer release" : "Internal preview"}</span>}<button className="new-button" onClick={() => setCreate(true)}><Plus size={17}/> <span>New</span></button><button className="icon-btn" onClick={() => setNotice(!notice)}><Bell size={18}/><i className="notification-dot"/></button><button className="icon-btn ai-btn" onClick={() => setAssistantOpen(true)}><Sparkles size={17}/></button><button className="icon-btn theme" onClick={() => setDark(!dark)}>{dark ? <Sun size={17}/> : <Moon size={17}/>}</button><button className="avatar">YA</button></div>
         <AnimatePresence>{notice && <motion.div className="notice-pop glass" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}><strong>Notifications</strong><p><i className="green-dot"/>paperplane-web deployed successfully</p><p><i className="purple-dot"/>New AI insight is ready</p><button onClick={() => setNotice(false)}>Mark all as read</button></motion.div>}</AnimatePresence>
       </header>
       <div className="content">{page === "Dashboard" ? <Dashboard onCreate={() => setCreate(true)} onAI={() => setAssistantOpen(true)} /> : page === "Projects" ? <Projects onCreate={() => setCreate(true)} toast={setToast}/> : <Workspace page={page} onCreate={() => setCreate(true)} toast={setToast}/>}</div>
