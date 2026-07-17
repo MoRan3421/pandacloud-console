@@ -25,6 +25,15 @@ type ProjectRecord = {
   created_at: string;
 };
 
+type ActivityRecord = {
+  id: string;
+  project_id: string;
+  project_name: string;
+  event_type: string;
+  message: string;
+  created_at: string;
+};
+
 const frameworkForSource = (source?: string) => {
   if (source === "Docker image") return "Docker";
   if (source === "GitLab") return "GitLab";
@@ -119,9 +128,12 @@ export default {
         cpu: 0,
         createdAt: new Date().toISOString(),
       };
-      await env.DB.prepare("INSERT INTO projects (id, name, framework, source, status, visits, cpu, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-        .bind(project.id, project.name, project.framework, project.source, project.status, project.visits, project.cpu, project.createdAt)
-        .run();
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO projects (id, name, framework, source, status, visits, cpu, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+          .bind(project.id, project.name, project.framework, project.source, project.status, project.visits, project.cpu, project.createdAt),
+        env.DB.prepare("INSERT INTO project_events (id, project_id, event_type, message, created_at) VALUES (?, ?, ?, ?, ?)")
+          .bind(crypto.randomUUID(), project.id, "project_created", `${project.name} is provisioning from ${project.source}.`, project.createdAt),
+      ]);
       return json({
         project,
       }, 201, request);
@@ -137,8 +149,19 @@ export default {
       if (!existing) return json({ error: "Project not found." }, 404, request);
 
       const status = payload.action === "deploy" ? "building" : "restarting";
-      await env.DB.prepare("UPDATE projects SET status = ? WHERE id = ?").bind(status, projectId).run();
-      return json({ project: { ...existing, status }, action: payload.action, message: `${existing.name} is ${status}.` }, 202, request);
+      const message = `${existing.name} is ${status}.`;
+      const createdAt = new Date().toISOString();
+      await env.DB.batch([
+        env.DB.prepare("UPDATE projects SET status = ? WHERE id = ?").bind(status, projectId),
+        env.DB.prepare("INSERT INTO project_events (id, project_id, event_type, message, created_at) VALUES (?, ?, ?, ?, ?)")
+          .bind(crypto.randomUUID(), projectId, `${payload.action}_queued`, message, createdAt),
+      ]);
+      return json({ project: { ...existing, status }, action: payload.action, message }, 202, request);
+    }
+
+    if (url.pathname === "/api/activity" && request.method === "GET") {
+      const { results } = await env.DB.prepare("SELECT project_events.id, project_events.project_id, projects.name AS project_name, project_events.event_type, project_events.message, project_events.created_at FROM project_events JOIN projects ON projects.id = project_events.project_id ORDER BY project_events.created_at DESC LIMIT 50").all<ActivityRecord>();
+      return json({ events: results, total: results.length }, 200, request);
     }
 
     if (url.pathname === "/api/deployments") {

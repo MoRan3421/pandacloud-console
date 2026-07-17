@@ -15,7 +15,7 @@ For local development, which uses the isolated internal Worker environment:
 npm run worker:dev
 ```
 
-The Worker exposes `GET /api/health`, `GET /api/release`, `GET|POST /api/projects`, `POST /api/projects/:id/actions`, `GET /api/deployments`, and `POST /api/ai/blueprint`.
+The Worker exposes `GET /api/health`, `GET /api/release`, `GET|POST /api/projects`, `POST /api/projects/:id/actions`, `GET /api/activity`, `GET /api/deployments`, and `POST /api/ai/blueprint`.
 
 ## Release environments
 
@@ -56,7 +56,7 @@ Without these secrets, Checkout remains safely disabled and returns a clear conf
 
 ## Project data
 
-Projects are persisted in isolated Cloudflare D1 databases: `pandacloud-projects-production` for customers and `pandacloud-projects-development` for internal testing. The schema and seed projects live in `migrations/0001_create_projects.sql`.
+Projects and their deployment audit events are persisted in isolated Cloudflare D1 databases: `pandacloud-projects-production` for customers and `pandacloud-projects-development` for internal testing. The schema and seed projects live in `migrations/`.
 
 Apply future migrations to both release lanes before deploying code that depends on them:
 
