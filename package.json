@@ -27,5 +27,8 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260716.1",
     "wrangler": "^4.111.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   }
 }
