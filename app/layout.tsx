@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./features.css";
 
 export const metadata: Metadata = { title: "PandaCloud — Cloud, made gentle", description: "A polished hosting control plane for the modern web." };
 
