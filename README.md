@@ -15,7 +15,7 @@ For local development, which uses the isolated internal Worker environment:
 npm run worker:dev
 ```
 
-The Worker exposes `GET /api/health`, `GET /api/release`, `GET|POST /api/projects`, `GET /api/deployments`, and `POST /api/ai/blueprint`.
+The Worker exposes `GET /api/health`, `GET /api/release`, `GET|POST /api/projects`, `POST /api/projects/:id/actions`, `GET /api/deployments`, and `POST /api/ai/blueprint`.
 
 ## Release environments
 

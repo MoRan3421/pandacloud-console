@@ -127,6 +127,20 @@ export default {
       }, 201, request);
     }
 
+    const actionMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/actions$/);
+    if (actionMatch && request.method === "POST") {
+      const projectId = decodeURIComponent(actionMatch[1]);
+      const payload = await request.json<{ action?: "deploy" | "restart" }>().catch(() => ({} as { action?: "deploy" | "restart" }));
+      if (payload.action !== "deploy" && payload.action !== "restart") return json({ error: "Choose deploy or restart." }, 400, request);
+
+      const existing = await env.DB.prepare("SELECT id, name, framework, source, status, visits, cpu, created_at FROM projects WHERE id = ?").bind(projectId).first<ProjectRecord>();
+      if (!existing) return json({ error: "Project not found." }, 404, request);
+
+      const status = payload.action === "deploy" ? "building" : "restarting";
+      await env.DB.prepare("UPDATE projects SET status = ? WHERE id = ?").bind(status, projectId).run();
+      return json({ project: { ...existing, status }, action: payload.action, message: `${existing.name} is ${status}.` }, 202, request);
+    }
+
     if (url.pathname === "/api/deployments") {
       return json({ deployments: projects.map((project, index) => ({ project: project.id, status: project.status, deployedAt: `${index + 2} minutes ago`, region: "FRA" })) }, 200, request);
     }
