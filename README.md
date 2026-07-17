@@ -33,3 +33,23 @@ npm run worker:deploy
 ```
 
 For an internal development release, use `npm run worker:deploy:development`. Both deploy scripts build the static `out/` directory, then upload it together with `worker/index.ts`. Authenticate with Cloudflare through Wrangler before the first deployment.
+
+## Stripe billing
+
+The Billing page creates Stripe-hosted Checkout Sessions for the Pro and Team subscriptions. It deliberately accepts only the two server-side configured plan IDs, never a client-supplied price.
+
+Create recurring Stripe Prices for Pro and Team, then configure each Worker environment independently:
+
+```bash
+# Production (customer-facing)
+npx wrangler secret put STRIPE_SECRET_KEY --env production
+npx wrangler secret put STRIPE_PRO_PRICE_ID --env production
+npx wrangler secret put STRIPE_TEAM_PRICE_ID --env production
+
+# Development (use Stripe test-mode credentials and Price IDs)
+npx wrangler secret put STRIPE_SECRET_KEY --env development
+npx wrangler secret put STRIPE_PRO_PRICE_ID --env development
+npx wrangler secret put STRIPE_TEAM_PRICE_ID --env development
+```
+
+Without these secrets, Checkout remains safely disabled and returns a clear configuration error. Stripe Checkout handles card collection and can display Apple Pay or Google Pay when enabled in the Stripe account. Subscription entitlement persistence should be connected to authenticated users and a database before enabling paid access controls.

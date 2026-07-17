@@ -2,6 +2,9 @@ interface Env {
   ASSETS: Fetcher;
   APP_ENV: "development" | "production";
   AUDIENCE: "internal" | "customer";
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_PRO_PRICE_ID?: string;
+  STRIPE_TEAM_PRICE_ID?: string;
 }
 
 const projects = [
@@ -39,6 +42,45 @@ export default {
     }
 
     if (url.pathname === "/api/release") return json({ environment: env.APP_ENV, audience: env.AUDIENCE, customerSafe: env.APP_ENV === "production" }, 200, request);
+
+    if (url.pathname === "/api/billing" && request.method === "GET") {
+      return json({
+        currentPlan: "hobby",
+        plans: [
+          { id: "hobby", name: "Hobby", price: 0, currency: "USD", interval: "month" },
+          { id: "pro", name: "Pro", price: 12, currency: "USD", interval: "month" },
+          { id: "team", name: "Team", price: 39, currency: "USD", interval: "month" },
+        ],
+        checkoutConfigured: Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_PRO_PRICE_ID && env.STRIPE_TEAM_PRICE_ID),
+      }, 200, request);
+    }
+
+    if (url.pathname === "/api/billing/checkout" && request.method === "POST") {
+      const payload = await request.json<{ plan?: "pro" | "team" }>().catch(() => ({} as { plan?: "pro" | "team" }));
+      const priceId = payload.plan === "pro" ? env.STRIPE_PRO_PRICE_ID : payload.plan === "team" ? env.STRIPE_TEAM_PRICE_ID : undefined;
+      if (!payload.plan || !priceId || !env.STRIPE_SECRET_KEY) {
+        return json({ error: "Billing is not configured yet. Add Stripe secrets before accepting customer payments.", code: "BILLING_NOT_CONFIGURED" }, 503, request);
+      }
+
+      const checkout = new URLSearchParams({
+        mode: "subscription",
+        "line_items[0][price]": priceId,
+        "line_items[0][quantity]": "1",
+        success_url: `${url.origin}/?billing=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${url.origin}/?billing=cancelled`,
+        allow_promotion_codes: "true",
+        "metadata[plan]": payload.plan,
+        "metadata[environment]": env.APP_ENV,
+      });
+      const stripeResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" },
+        body: checkout.toString(),
+      });
+      const stripeData = await stripeResponse.json<{ url?: string; error?: { message?: string } }>();
+      if (!stripeResponse.ok || !stripeData.url) return json({ error: stripeData.error?.message ?? "Stripe could not create a Checkout session.", code: "CHECKOUT_FAILED" }, 502, request);
+      return json({ url: stripeData.url }, 200, request);
+    }
 
     if (url.pathname === "/api/projects" && request.method === "GET") {
       return json({ projects, total: projects.length }, 200, request);
