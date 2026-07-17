@@ -3,6 +3,7 @@
   "name": "young-queen-08f8",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-07-16",
+  "workers_dev": true,
   "vars": {
     "APP_ENV": "production",
     "AUDIENCE": "customer"
@@ -15,6 +16,12 @@
   "env": {
     "production": {
       "name": "young-queen-08f8",
+      "routes": [
+        {
+          "pattern": "tuantuanserver.com",
+          "custom_domain": true
+        }
+      ],
       "vars": {
         "APP_ENV": "production",
         "AUDIENCE": "customer"
