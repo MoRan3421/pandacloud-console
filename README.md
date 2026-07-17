@@ -53,3 +53,14 @@ npx wrangler secret put STRIPE_TEAM_PRICE_ID --env development
 ```
 
 Without these secrets, Checkout remains safely disabled and returns a clear configuration error. Stripe Checkout handles card collection and can display Apple Pay or Google Pay when enabled in the Stripe account. Subscription entitlement persistence should be connected to authenticated users and a database before enabling paid access controls.
+
+## Project data
+
+Projects are persisted in isolated Cloudflare D1 databases: `pandacloud-projects-production` for customers and `pandacloud-projects-development` for internal testing. The schema and seed projects live in `migrations/0001_create_projects.sql`.
+
+Apply future migrations to both release lanes before deploying code that depends on them:
+
+```bash
+npx wrangler d1 migrations apply pandacloud-projects-production --remote --env production
+npx wrangler d1 migrations apply pandacloud-projects-development --remote --env development
+```

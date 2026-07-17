@@ -16,6 +16,14 @@
   "env": {
     "production": {
       "name": "young-queen-08f8",
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "pandacloud-projects-production",
+          "database_id": "bbdc7a17-f772-49ff-8f1b-03aedc391c20",
+          "migrations_dir": "./migrations"
+        }
+      ],
       "routes": [
         {
           "pattern": "tuantuanserver.com",
@@ -33,6 +41,14 @@
       }
     },
     "development": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "pandacloud-projects-development",
+          "database_id": "1bccbc23-5705-4b43-b27e-c4828a4d3eca",
+          "migrations_dir": "./migrations"
+        }
+      ],
       "vars": {
         "APP_ENV": "development",
         "AUDIENCE": "internal"

@@ -1,5 +1,6 @@
 interface Env {
   ASSETS: Fetcher;
+  DB: D1Database;
   APP_ENV: "development" | "production";
   AUDIENCE: "internal" | "customer";
   STRIPE_SECRET_KEY?: string;
@@ -12,6 +13,24 @@ const projects = [
   { id: "luma-api", name: "luma-api", framework: "Node.js", status: "live", visits: 8700, cpu: 68 },
   { id: "atlas-studio", name: "atlas-studio", framework: "Astro", status: "building", visits: 2100, cpu: 19 },
 ];
+
+type ProjectRecord = {
+  id: string;
+  name: string;
+  framework: string;
+  source: string;
+  status: string;
+  visits: number;
+  cpu: number;
+  created_at: string;
+};
+
+const frameworkForSource = (source?: string) => {
+  if (source === "Docker image") return "Docker";
+  if (source === "GitLab") return "GitLab";
+  if (source === "Start with a template") return "Panda template";
+  return "Next.js 15";
+};
 
 const json = (body: unknown, status = 200, request?: Request) => new Response(JSON.stringify(body), {
   status,
@@ -83,17 +102,28 @@ export default {
     }
 
     if (url.pathname === "/api/projects" && request.method === "GET") {
-      return json({ projects, total: projects.length }, 200, request);
+      const { results } = await env.DB.prepare("SELECT id, name, framework, source, status, visits, cpu, created_at FROM projects ORDER BY created_at DESC LIMIT 100").all<ProjectRecord>();
+      return json({ projects: results, total: results.length }, 200, request);
     }
 
     if (url.pathname === "/api/projects" && request.method === "POST") {
       const payload = await request.json<{ name?: string; source?: string }>().catch(() => ({} as { name?: string; source?: string }));
       if (!payload.name?.trim()) return json({ error: "A project name is required." }, 400, request);
+      const project = {
+        id: crypto.randomUUID(),
+        name: payload.name.trim(),
+        source: payload.source ?? "GitHub",
+        framework: frameworkForSource(payload.source),
+        status: "provisioning",
+        visits: 0,
+        cpu: 0,
+        createdAt: new Date().toISOString(),
+      };
+      await env.DB.prepare("INSERT INTO projects (id, name, framework, source, status, visits, cpu, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(project.id, project.name, project.framework, project.source, project.status, project.visits, project.cpu, project.createdAt)
+        .run();
       return json({
-        project: {
-          id: crypto.randomUUID(), name: payload.name.trim(), source: payload.source ?? "github",
-          status: "provisioning", createdAt: new Date().toISOString(),
-        },
+        project,
       }, 201, request);
     }
 
